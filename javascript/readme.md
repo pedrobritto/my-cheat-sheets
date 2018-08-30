@@ -1,5 +1,57 @@
 # My JavaScript Cheat Sheet
 
+## Sorting
+
+### Sort ascending
+
+```js
+toSort = [4, 2, 3, 1];
+
+toSort.sort();
+
+// Or
+toSort.sort((a, b) => {
+  return a > b;
+});
+
+// Will print [1, 2, 3, 4]
+```
+
+### Sort descending
+
+```js
+toSort = [4, 2, 3, 1];
+
+toSort.sort((a, b) => {
+  return a < b;
+});
+
+// Will print [4, 3, 2, 1]
+```
+
+### Sorting strings
+
+```js
+const toSort = ["c", "b", "a"];
+
+toSort.sort();
+
+// Or
+toSort.sort((a, b) => {
+  return a > b;
+});
+```
+
+### Sorting Objects inside Array by a key value
+
+```js
+const toSort = [{ prop: "c" }, { prop: "b" }, { prop: "a" }];
+
+toSort.sort((a, b) => {
+  return a.prop > b.prop;
+});
+```
+
 ### `Element.offsetWidth`, `Element.clientWidth`, `Element.scrollWidth` e `window.innerWidth`
 
 - `Element.offsetWidth`, `Element.offsetHeight`: The size of the visual box **INCLUDING** all borders. Can be calculated by adding width/height and paddings and borders, if the element has `display: block`.
