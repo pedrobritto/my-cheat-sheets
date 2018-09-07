@@ -12,28 +12,52 @@ npm i mongoose
 
 ```js
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 ```
 
 ### Connecting to DB
 
 ```js
-mongoose.connect(
-  "mongodb://localhost:27017/DB_NAME",
-  { useNewUrlParser: true }
-);
+mongoose
+  .connect(
+    "mongodb://localhost:27017/DB_NAME",
+    { useNewUrlParser: true }
+  )
+  .then(() => console.log("Connected to MongoDB"))
+  .catch(err => console.log(err));
 ```
 
 ### Creating a Schema
 
 ```js
-const exampleSchema = new mongoose.Schema({
-  title: String,
-  date: String,
-  value: Number
+const courseSchema = Schema({
+  name: String,
+  author: String,
+  tags: [String],
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  isPublished: Boolean
 });
 ```
 
-### Initializing a model/collection
+Schema types:
+
+```
+String
+Number
+Date
+Buffer
+Boolean
+Mixed
+ObjectId
+Array
+Decimal128
+Map
+```
+
+### Compiling a Document Model
 
 ```js
 const Example = mongoose.model("Example", exampleSchema);
@@ -41,86 +65,199 @@ const Example = mongoose.model("Example", exampleSchema);
 
 This example will create a collection called "examples" (plural) from the string `"Example"` passed as the first argument of the `model()` and take in a `mongoose.Schema()` as the second argument.
 
-The variable `Example` can then be used to query inside the `examples` collection inside the `DB_NAME`.
+The constant `Example` can then be used to query and operate inside the `examples` collection inside the `DB_NAME`.
 
 ## Database Operations
 
-### Creating a collection item
+### Creating a document in collection
 
 ```js
-Example.create(
-  {
-    title: req.body.title,
-    date: req.body.date,
-    value: req.body.value
-  },
-  (err, item) => {
-    if (err) {
-      res.json(err);
-    } else {
-      res.json(item);
-    }
+async function createCourse(name, author, tags, isPublished) {
+  try {
+    const course = new Course({
+      name: name,
+      author: author,
+      tags: tags,
+      isPublished: isPublished
+    });
+
+    const result = await course.save();
+    console.log(result);
+  } catch (err) {
+    console.log(err);
   }
-);
+}
+
+createCourse(args...);
 ```
 
-`Model.create({ key: "value" })` will create a new item inside the collection with the givem key-values. Callback is used for error handling and returning the result.
+`Model.create({ key: "value" })` will create a new item inside the collection with the given key-values. Catch is used for error handling.
 
-### Returning all collection items
+### Find all documents in collection
 
 ```js
-Example.find({}, (err, item) => {
-  if (err) {
-    res.json(err);
-  } else {
-    res.json(item);
+async function find() {
+  try {
+    const courses = await Course.find();
+    console.log(courses);
+  } catch (err) {
+    console.log(err);
   }
-});
+}
+
+find();
 ```
 
 `Model.find({})` will return all items inside a collection.
 
-### Return a collection item by ID
+### Find a document in collection by ID
 
 ```js
-Example.findById(id, (err, item) => {
-  if (err) {
-    res.json(err);
-  } else {
-    res.json(item);
+async function findById(id) {
+  try {
+    const course = await Example.findById(id);
+    console.log(course);
+  } catch (err) {
+    console.log(err);
   }
-});
+}
+
+findById(OBJECT_ID);
 ```
 
 `Model.findById(id)` will return the item with the passed id.
 
-### Find a collection item by ID and update
+### Advanced querying
 
 ```js
-Example.findByIdAndUpdate(id, newValue, (err, item) => {
-  if (err) {
-    res.json(err);
-  } else {
-    res.json(item);
+async function advancedQuery() {
+  try {
+    const courses = await Course.find({ isPublished: { $in: [true, false] } })
+      .sort({ name: 1 }) // sort ascending by name
+      .select({ name: 1, tags: 1 }) // display only name and tags
+      .count(); // return number of documents that match query
+    console.log(courses);
+  } catch (err) {
+    console.log(err);
   }
-});
+}
+
+advancedQuery();
+```
+
+### Update document - Query First
+
+```js
+async function updateCourse(id) {
+  try {
+    const course = await Course.findById(id);
+    if (!course) return;
+
+    const result = await course
+      .set({
+        isPublished: true,
+        author: "Another author"
+      })
+      .save();
+
+    console.log(result);
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+updateCourse(OBJECT_ID);
+```
+
+### Update document - Update First
+
+You can either return the status of the change:
+
+```js
+async function updateCourse(id) {
+  try {
+    const updateOperationResult = await Course.update(
+      { _id: id },
+      {
+        $set: {
+          author: "Pedro",
+          isPublished: false
+        }
+      }
+    );
+    console.log(updateOperationResult);
+  } catch (err) {
+    console.log(err);
+  }
+}
+```
+
+Or you can return the updated object:
+
+```js
+async function updateCourse(id) {
+  try {
+    const course = await Course.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          author: "Pedro",
+          isPublished: false
+        }
+      },
+      { new: true }
+    );
+    console.log(course);
+  } catch (err) {
+    console.log(err);
+  }
+}
 ```
 
 `Model.findByIdAndUpdate(id, newValue)` will find an item by id and then replace it's values with the newValue object.
 
-### Find a collection item by ID and remove
+### Find and remove a document
+
+Returns status of document removal:
 
 ```js
-Example.findByIdAndRemove(id, (err, item) => {
-  if (err) {
-    res.json(err);
-  } else {
-    res.json(item);
+async function removeCourse(id) {
+  try {
+    const result = await Course.deleteOne({ _id: id });
+    console.log(result);
+  } catch (err) {
+    console.log(err);
   }
-});
+}
 ```
 
-`Model.findByIdAndRemove(id)` will find an item by id and them remove it.
+Or to return the removed document:
+
+```js
+async function removeCourse(id) {
+  try {
+    const course = await Course.findByIdAndRemove(id);
+    console.log(course);
+  } catch (err) {
+    console.log(err);
+  }
+}
+```
+
+### Remove several documents
+
+```js
+async function removeCourse(id) {
+  try {
+    const result = await Course.deleteMany({ isPublished: false });
+    console.log(result);
+  } catch (err) {
+    console.log(err);
+  }
+}
+```
+
+This deletes all documents with `{ isPublished: false }`.
 
 ## Data associations
 
