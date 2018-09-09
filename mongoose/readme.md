@@ -195,15 +195,12 @@ async function updateCourse(id) {
 Or you can return the updated object:
 
 ```js
-async function updateCourse(id) {
+async function updateCourse(id, data) {
   try {
     const course = await Course.findByIdAndUpdate(
       id,
       {
-        $set: {
-          author: "Pedro",
-          isPublished: false
-        }
+        $set: data
       },
       { new: true }
     );
@@ -212,6 +209,11 @@ async function updateCourse(id) {
     console.log(err);
   }
 }
+
+updateCourse(id, {
+  author: "Pedro",
+  isPublished: false
+});
 ```
 
 `Model.findByIdAndUpdate(id, newValue)` will find an item by id and then replace it's values with the newValue object.
@@ -263,29 +265,70 @@ This deletes all documents with `{ isPublished: false }`.
 
 ### Embedding
 
-We want to associate many posts to one user, so we initialize a `posts` array inside the `userSchema`.
+We want to associate an author posts to a course, so we initialize an `author` field inside `courseSchema`.
 
-This method will embed the full content of `posts` inside the user document.
+This method will embed the full content of `author` inside a course document.
 
 ```js
-const postSchema = new mongoose.Schema({
-  title: String,
-  content: String
-});
-
-const userSchema = new mongoose.Schema({
+const authorSchema = new mongoose.Schema({
   name: String,
-  email: String,
-  posts: [postSchema]
+  bio: String,
+  website: String
 });
 
-PostModel = mongoose.model("Post", postSchema);
-UserModel = mongoose.model("User", userSchema);
+const courseSchema = new mongoose.Schema({
+  name: String,
+  author: authorSchema
+});
+
+const Author = mongoose.model("Author", authorSchema);
+const Course = mongoose.model("Course", courseSchema);
+```
+
+The author subdocument can be upadted inside the course document.
+
+```js
+async function updateAuthor(courseId, authorName) {
+  await Course.findById(courseId);
+  course.author.name = authorName;
+  course.save();
+}
+```
+
+Query first can also be used.
+
+```js
+async function updateAuthor(courseId, authorName) {
+  await Course.update(
+    { _id: courseId },
+    {
+      $set: {
+        "author.name": authorName
+      }
+    }
+  );
+}
+```
+
+To remove a subdocument, use the `$unset` operator.
+
+```js
+async function updateAuthor(courseId, authorName) {
+  await Course.update(
+    { _id: courseId },
+    {
+      $unset: {
+        "author.name": ""
+      }
+    }
+  );
+}
 ```
 
 We can add new posts to existing users.
 
 ```js
+// TODO: Needs refactoring
 UserModel.findOne({ name: "User Name" }, (err, user) => {
   if (err) console.log(err);
   else {
@@ -302,20 +345,61 @@ UserModel.findOne({ name: "User Name" }, (err, user) => {
     });
   }
 });
+```
 
-// Alternative syntax
-// Not tested!
-UserModel.update(
-  { _id: id },
-  {
-    $push: {
-      posts: {
-        title: "Post title",
-        content: "Post content"
-      }
-    }
-  }
-);
+### Embedding - Arrays
+
+Using a subdocument array is very similar to using a single subdocument.
+
+```js
+const authorSchema = new mongoose.Schema({
+  name: String,
+  bio: String,
+  website: String
+});
+
+const courseSchema = new mongoose.Schema({
+  name: String,
+  authors: [authorSchema]
+});
+
+const Author = mongoose.model("Author", authorSchema);
+const Course = mongoose.model("Course", courseSchema);
+
+// Creating a new course
+async function createCourse(name, authors) {
+  const course = new Course({
+    name,
+    authors
+  });
+
+  const result = await course.save();
+}
+
+createCourse("Course Name", [
+  new Author({ name: "author 1" }, new Author({ name: "author 2" }))
+]);
+```
+
+To add a new subdocument:
+
+```js
+async function addAuthor(courseId, author) {
+  const course = await Course.findById(courseId);
+  course.authors.push(author);
+  course.save();
+}
+```
+
+And to remove:
+
+```js
+async function removeAuthor(courseId, authorId) {
+  const course = await Course.findById(courseId);
+  const author = await course.authors.id(authorId);
+  author.remove();
+  course.save();
+}
 ```
 
 ### Object References
@@ -323,106 +407,88 @@ UserModel.update(
 This will reference the ID of a document inside another document. On run time, the data can be populated.
 
 ```js
-const postSchema = new mongoose.Schema({
-  title: String,
-  content: String
-});
+const Author = mongoose.model(
+  "Author",
+  new mongoose.Schema({
+    name: String,
+    bio: String,
+    website: String
+  })
+);
 
-const userSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  posts: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Post" // Collection?
+const Course = mongoose.model(
+  "Course",
+  new mongoose.Schema({
+    name: String,
+    author: {
+      type: mongoose.Schema.Types.ObjectId, // Need to have ObjectId type
+      ref: "Author" // name of referenced collection
     }
-  ]
-});
-
-PostModel = mongoose.model("Post", postSchema);
-UserModel = mongoose.model("User", userSchema);
-```
-
-```js
-Post.create(
-  {
-    title: "A post",
-    content: "The post content"
-  },
-  (err, post) => {
-    if (err) {
-      console.log(err);
-    } else {
-      // Finds user
-      User.findOne({ email: "bob@email.com" }, (err, user) => {
-        if (err) {
-          console.log(err);
-        } else {
-          // Add and save the post reference to the user's posts array
-          user.posts.push(post);
-          user.save((err, data) => {
-            if (err) {
-              console.log(err);
-            } else {
-              console.log(data);
-            }
-          });
-        }
-      });
-    }
-  }
+  })
 );
 ```
 
-A query for "bob@email.com" would return:
+```js
+// Helper function to create author
+async function createAuthor(name, bio, website) {
+  const author = new Author({
+    name,
+    bio,
+    website
+  });
 
-```json
-{
-  "posts": ["5b8bc98ee4f3d30f7db60d64", "5b8bca45789ab70fcd7e6259"],
-  "_id": "5b8bc801afe0c60f4e34e6bd",
-  "email": "bob@email.com",
-  "name": "Bob",
-  "__v": 2
+  const result = await author.save();
 }
+
+// Helper function to create course
+async function createCourse(name, author) {
+  const course = new Course({
+    name,
+    author
+  });
+
+  const result = await course.save();
+}
+
+createAuthor("Mosh", "My bio", "My Website");
+createCourse("Node Course", "5b94e7435720aa2beba8cbbb"); // ID of created author
 ```
 
-We can then use the post ID's inside the `posts` array to populate it during runtime.
+A query for all courses would return:
+
+```json
+[
+  {
+    "_id": "5b94e896f85376331bb3821b",
+    "name": "Node Course",
+    "author": "5b94e7435720aa2beba8cbbb"
+  }
+]
+```
+
+We can then use the author ID inside the `author` array to populate it during runtime by using `.populate()`.
 
 ```js
-User.findOne({ email: "bob@email.com" })
-  .populate("posts")
-  .exec((err, data) => {
-    if (err) {
-      console.log(err);
-    } else {
-      console.log(data);
-    }
-  });
-```
-
-It'll return:
-
-```json
-{
-  "posts": [
-    {
-      "_id": "5b8bc98ee4f3d30f7db60d64",
-      "title": "A post, pt 2",
-      "content": "qwer qwer qwer",
-      "__v": 0
-    },
-    {
-      "_id": "5b8bca45789ab70fcd7e6259",
-      "title": "A post, pt 3",
-      "content": "zxcv zxcv zxcv",
-      "__v": 0
-    }
-  ],
-  "_id": "5b8bc801afe0c60f4e34e6bd",
-  "email": "bob@email.com",
-  "name": "Bob",
-  "__v": 2
+// Helper function to list courses
+async function listCourses() {
+  const courses = await Course.find()
+    .populate("author", "name -_id")
+    .select("name author");
 }
 ```
 
-But querying for "bob@email.com" again would return the same result as before, object references only.
+The second argument receives a `.select()` string, this will return only the author name.
+
+```json
+[
+  {
+    "_id": "5b94e896f85376331bb3821b",
+    "name": "Node Course",
+    "author": {
+      "name": "Mosh"
+    }
+  }
+]
+```
+
+Note that non-existants documents can be referenced inside another. When that happens, the populated value will be `null`.
