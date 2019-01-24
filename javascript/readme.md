@@ -60,44 +60,70 @@ toSort.sort((a, b) => {
 
 > `window.innerWidth` e `window.innerHeight` parecem funcionar de forma semelhante ao `clientWidth` e `clientHeight`, mas para a viewport.
 
-### Acessar conteúdo de um `<object>` ou `<iframe>`
+### Document scroll position
+
+```js
+// Chrome, Firefox
+document.documentElement.scrollTop;
+
+// Safari
+document.body.scrollTop;
+```
+
+### Event delegation
+
+```js
+document.body.addEventListener("click", event => {
+  const targetElement = event.target.closest(".element");
+
+  if (!targetElement) {
+    // do something!
+  }
+});
+```
+
+### Access content inside `<object>` or `<iframe>`
 
 ```js
 iframe = document.querySelector("#iframe-id");
 iframeContent = iframe.contentDocument;
 
-// Referenciar com iframeContent
+// Use iframeContent as a Ref
 iframeContent.querySelector(".inside-iframe");
 ```
 
-### Objeto `window.location`
+### `window.location` Object
 
-- Objeto global: `window.location`;
-- Mudar url da página atual: `window.location.assign(url: string)`;
-- Abrir uma nova janela: `window.open(url: string)`
+- Global object: `window.location`;
+- Change url: `window.location.assign(url: string)`;
+- Open url in a new window: `window.open(url: string)`;
 
 ### Google maps
 
 ```html
 <div id="map">
-
-<script type="text/javascript">
-function initMap() {
-    var myLatLng = {
+  <script type="text/javascript">
+    function initMap() {
+      var myLatLng = {
         lat: -3.7381046,
         lng: -38.4943983
-    };
-    var map = new google.maps.Map(document.getElementById('map'), {
+      };
+      var map = new google.maps.Map(document.getElementById("map"), {
         zoom: 16,
         center: myLatLng
-    });
-    var marker = new google.maps.Marker({
+      });
+      var marker = new google.maps.Marker({
         position: myLatLng,
         map: map,
-        title: 'Ouvidor'
-    });
-}
-</script>
+        title: "Ouvidor"
+      });
+    }
+  </script>
 
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap"></script>
+  <script
+    async
+    defer
+    src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap"
+  ></script>
+</div>
 ```
