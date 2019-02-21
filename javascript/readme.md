@@ -98,6 +98,26 @@ iframeContent.querySelector(".inside-iframe");
 - Change url: `window.location.assign(url: string)`;
 - Open url in a new window: `window.open(url: string)`;
 
+### Creating and appending an element to DOM
+
+```js
+const targetContainer = document.querySelector(".target-container");
+
+function createElement() {
+  const fragment = document.createRange().createContextualFragment(
+    `<div class="parent-class">
+      <div class="child-class">
+        Some stuff in here.
+      </div>
+    </div>`
+  );
+
+  targetContainer.appendChild(fragment);
+}
+```
+
+> To append the same element several times, use a loop and call the `createElement()` function inside it. If you try to append the fragment inside the `createElement()` function, it'll work only once.
+
 ### Google maps
 
 ```html
